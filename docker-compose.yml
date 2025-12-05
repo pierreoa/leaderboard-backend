@@ -11,11 +11,47 @@ services:
             - 'db_data:/var/lib/postgresql'
         ports:
             - ${ApplicationContext__PG__PORT}:5432
+        healthcheck:
+            test: [ "CMD-SHELL", "pg_isready -U ${ApplicationContext__PG__USER} -d ${ApplicationContext__PG__DB}" ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    backend:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        restart: always
+        ports:
+            - "8000:80"
+        environment:
+            - ASPNETCORE_ENVIRONMENT=Production
+            - ASPNETCORE_URLS=http://+:80
+            - ASPNETCORE_HTTP_PORTS=80
+            - ASPNETCORE_HTTPS_PORTS=
+            - WebsiteUrl=http://localhost:3000
+            - AllowedOrigins=${AllowedOrigins}
+            - ApplicationContext__MigrateDb=${ApplicationContext__MigrateDb}
+            - ApplicationContext__PG__HOST=db
+            - ApplicationContext__PG__USER=${ApplicationContext__PG__USER}
+            - ApplicationContext__PG__PASSWORD=${ApplicationContext__PG__PASSWORD}
+            - ApplicationContext__PG__DB=${ApplicationContext__PG__DB}
+            - ApplicationContext__PG__PORT=5432
+            - Limits__Default__Default=25
+            - Limits__Default__Max=100
+            - JWT__KEY=${JWT__KEY}
+            - JWT__ISSUER=${JWT__ISSUER}
+            - Brevo__ApiKey=${Brevo__ApiKey}
+        depends_on:
+            db:
+                condition: service_healthy
 
     adminer:
         image: adminer
         restart: always
         ports:
             - ${ADMINER_PORT}:8080
+        depends_on:
+            - db
 volumes:
   db_data:
